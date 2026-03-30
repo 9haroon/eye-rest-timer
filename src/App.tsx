@@ -1,89 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import './App.css'; // Assuming basic styling will be in App.css
 import TimerDisplay from './components/TimerDisplay';
-import ControlButtons from './components/ControlButtons';
 import { useTimer } from './hooks/useTimer';
-
-// Define default durations in milliseconds
-const WORK_DURATION_MS = 20 * 60 * 1000; // 20 minutes
-const BREAK_DURATION_MS = 20 * 1000; // 20 seconds
+import './App.css'; // Assuming this file contains global styles
 
 function App() {
-  // Use the custom hook for timer logic
-  const [
-    { timeRemaining, isWorkTime, isActive },
-    { start, pause, reset, setIsActive, setIsWorkTime, setTimeRemaining }
-  ] = useTimer(WORK_DURATION_MS, BREAK_DURATION_MS);
+  const {
+    secondsRemaining,
+    isWorkTime,
+    isActive,
+    start,
+    pause,
+    reset,
+  } = useTimer();
 
-  // --- Notification Logic Placeholder ---
-  // This part will be expanded in later tasks to handle actual notifications
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
-
+  // Placeholder for notification logic - will be integrated later
   useEffect(() => {
-    if (!isActive && timeRemaining <= 0) {
-      if (isWorkTime) { // Just finished a work interval
-        // Transition to break state
-        setIsWorkTime(false);
-        setTimeRemaining(BREAK_DURATION_MS);
-        setNotificationMessage("Time for a 20-second break! Look 20 feet away.");
-        setShowNotification(true);
-        // Optionally play a sound
-      } else { // Just finished a break interval
-        // Transition back to work state
-        setIsWorkTime(true);
-        setTimeRemaining(WORK_DURATION_MS);
-        // No notification needed for end of break, auto-starts work
-      }
-    } else if (isActive && timeRemaining <= 0 && !isWorkTime) {
-        // This case should ideally not be hit if logic above is correct,
-        // but ensures break ends and work starts.
-        setIsWorkTime(true);
-        setTimeRemaining(WORK_DURATION_MS);
-        setShowNotification(false); // Hide break notification if still somehow visible
+    if (secondsRemaining === 0 && !isActive) {
+      console.log("Timer finished, showing alert (placeholder)");
+      // This is where notification logic would be triggered
+      // e.g., showNotification(isWorkTime ? "Break Time!" : "Work Time!");
     }
-  }, [isActive, timeRemaining, isWorkTime, setIsActive, setIsWorkTime, setTimeRemaining]);
+  }, [secondsRemaining, isActive, isWorkTime]);
 
-  // Handle dismissing the notification
-  const handleDismissNotification = () => {
-    setShowNotification(false);
+  const handleStartPause = () => {
+    if (isActive) {
+      pause();
+    } else {
+      start();
+    }
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Eye Rest Timer</h1>
-      </header>
-      <main>
-        <TimerDisplay
-          timeRemaining={timeRemaining}
-          isWorkTime={isWorkTime}
-          isActive={isActive}
-        />
-        <ControlButtons
-          isActive={isActive}
-          isWorkTime={isWorkTime}
-          onStart={start}
-          onPause={pause}
-          onReset={reset}
-        />
-
-        {/* Placeholder for Break Notification */}
-        {showNotification && !isActive && ( // Show notification only when not actively running and break is over
-          <div className="notification-overlay">
-            <div className="notification-content">
-              <p>{notificationMessage}</p>
-              <button onClick={handleDismissNotification} className="btn btn-secondary">
-                Got it
-              </button>
-            </div>
-          </div>
-        )}
-      </main>
-      <footer>
-        {/* Placeholder for Settings and History links/components */}
-        <p>© 2026 Eye Rest Timer</p>
-      </footer>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+      <h1 className="text-4xl font-bold mb-8 text-blue-700">Eye Rest Timer</h1>
+      <TimerDisplay
+        secondsRemaining={secondsRemaining}
+        isWorkTime={isWorkTime}
+        isActive={isActive}
+      />
+      <div className="flex space-x-4 mt-8">
+        <button
+          onClick={handleStartPause}
+          className={`px-8 py-4 rounded-lg text-2xl font-semibold transition-colors duration-300
+                      ${isActive ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+        >
+          {isActive ? 'Pause' : 'Start'}
+        </button>
+        <button
+          onClick={reset}
+          className="px-8 py-4 rounded-lg text-2xl font-semibold bg-red-500 hover:bg-red-600 text-white transition-colors duration-300"
+        >
+          Reset
+        </button>
+      </div>
+      {/* Placeholder for Settings and History links/components */}
+      <div className="mt-16 text-sm text-gray-600">
+        <p>Completed Work Sessions: <span className="font-bold">0</span></p> {/* Placeholder */}
+      </div>
     </div>
   );
 }
