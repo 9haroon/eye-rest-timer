@@ -1,0 +1,178 @@
+/* Basic Reset and Body Styling */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f4f7f6; /* Light background */
+  color: #333;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  text-align: center;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px; /* Max width for the main content area */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.App-header {
+  margin-bottom: 30px;
+  color: #007bff; /* Primary color for header */
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2.5em;
+  font-weight: 700;
+}
+
+main {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px; /* Spacing between timer, buttons, etc. */
+}
+
+/* Timer Display Styling */
+.timer-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 250px; /* Fixed size for the timer display */
+  height: 250px;
+  border-radius: 50%; /* Circular timer */
+  border: 8px solid #fff; /* White border */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Soft shadow */
+  transition: background-color 0.5s ease, border-color 0.5s ease;
+}
+
+.timer-container.work {
+  background-color: #d4edda; /* Light green for work */
+  border-color: #c3e6cb;
+}
+
+.timer-container.break {
+  background-color: #fff3cd; /* Light yellow for break */
+  border-color: #ffeeba;
+}
+
+.timer-container.paused {
+  background-color: #e2e3e5; /* Light gray for paused */
+  border-color: #d6d8db;
+}
+
+.timer-value {
+  font-size: 4em;
+  font-weight: 800;
+  color: #333;
+  line-height: 1.1; /* Adjust line height for better fit */
+}
+
+.timer-label {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-top: 10px;
+  color: #555;
+}
+
+/* Control Buttons Styling */
+.control-buttons {
+  display: flex;
+  gap: 15px; /* Space between buttons */
+}
+
+.btn {
+  padding: 12px 25px;
+  font-size: 1em;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background-color: #007bff; /* Blue */
+  color: white;
+}
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d; /* Gray */
+  color: white;
+}
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.btn-danger {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.btn[disabled] {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Notification Overlay */
+.notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.notification-content {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 90%;
+}
+
+.notification-content p {
+  font-size: 1.3em;
+  margin-bottom: 25px;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Footer Styling */
+footer {
+  margin-top: 40px;
+  font-size: 0.9em;
+  color: #888;
+}
