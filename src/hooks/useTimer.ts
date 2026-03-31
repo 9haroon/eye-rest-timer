@@ -1,99 +1,149 @@
 ```typescript
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-const WORK_DURATION_SECONDS = 20 * 60; // 20 minutes
-const BREAK_DURATION_SECONDS = 20;     // 20 seconds
+// Define default durations in seconds
+const DEFAULT_WORK_DURATION_SECONDS = 20 * 60; // 20 minutes
+const DEFAULT_BREAK_DURATION_SECONDS = 20;     // 20 seconds
 
 interface TimerState {
-    secondsRemaining: number;
-    isWorkTime: boolean;
-    isActive: boolean;
+  remainingTime: number; // in seconds
+  isWorkTime: boolean;   // true if currently in a work interval, false for break
+  isActive: boolean;     // true if the timer is currently running
+  currentDuration: number; // the duration of the current interval (work or break) in seconds
 }
 
 interface TimerControls {
-    start: () => void;
-    pause: () => void;
-    reset: () => void;
+  startTimer: () => void;
+  pauseTimer: () => void;
+  resetTimer: () => void;
+  // These setters would be used for future customization features
+  // setWorkDuration: (duration: number) => void;
+  // setBreakDuration: (duration: number) => void;
 }
 
-export function useTimer(): TimerState & TimerControls {
-    const [secondsRemaining, setSecondsRemaining] = useState<number>(WORK_DURATION_SECONDS);
-    const [isWorkTime, setIsWorkTime] = useState<boolean>(true);
-    const [isActive, setIsActive] = useState<boolean>(false);
+export const useTimer = (): TimerState & TimerControls => {
+  // State for the time remaining in the current interval
+  const [remainingTime, setRemainingTime] = useState<number>(DEFAULT_WORK_DURATION_SECONDS);
+  // State to track if the current interval is a work interval or a break interval
+  const [isWorkTime, setIsWorkTime] = useState<boolean>(true);
+  // State to track if the timer is actively counting down
+  const [isActive, setIsActive] = useState<boolean>(false);
+  // State to hold the total duration of the current interval (work or break)
+  const [currentDuration, setCurrentDuration] = useState<number>(DEFAULT_WORK_DURATION_SECONDS);
 
-    const timerId = useRef<NodeJS.Timeout | null>(null);
+  // Refs to hold the interval ID and the durations, allowing them to persist across renders
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const workDurationRef = useRef<number>(DEFAULT_WORK_DURATION_SECONDS);
+  const breakDurationRef = useRef<number>(DEFAULT_BREAK_DURATION_SECONDS);
 
-    // Function to start the timer
-    const start = () => {
-        if (!isActive) {
-            setIsActive(true);
-        }
+  // Function to handle the timer ticking every second
+  const tick = useCallback(() => {
+    setRemainingTime((prevTime) => {
+      if (prevTime <= 1) { // If it's the last second or less
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null; // Clear the interval reference
+        setIsActive(false); // Timer has stopped
+
+        // Determine the next interval type (work or break)
+        const nextIsWorkTime = !isWorkTime;
+        setIsWorkTime(nextIsWorkTime);
+
+        // Set the duration for the *next* interval
+        const nextDuration = nextIsWorkTime ? workDurationRef.current : breakDurationRef.current;
+        setCurrentDuration(nextDuration); // Update current duration state
+        setRemainingTime(nextDuration);   // Reset time to the new duration for the next interval
+
+        // TODO: Trigger notification logic here when implemented in a future task.
+        // This task focuses solely on managing the timer's state.
+
+        return 0; // Ensure it displays 00:00 before the state fully updates or for a brief moment
+      }
+      return prevTime - 1; // Decrement time by 1 second
+    });
+  }, [isWorkTime]); // Dependency on isWorkTime to know which duration to switch to
+
+  // Effect to manage the setInterval for the timer
+  useEffect(() => {
+    if (isActive) {
+      // Start the interval if the timer is active
+      intervalRef.current = setInterval(tick, 1000);
+    } else {
+      // Clear the interval if the timer is not active
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    // Cleanup function to clear interval on component unmount
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
+  }, [isActive, tick]); // Re-run effect if isActive state or tick function changes
 
-    // Function to pause the timer
-    const pause = () => {
-        setIsActive(false);
-    };
+  // Function to start the timer
+  const startTimer = useCallback(() => {
+    if (!isActive) {
+      setIsActive(true);
+      // The interval is managed by the useEffect hook, setting isActive is sufficient to start it.
+    }
+  }, [isActive]);
 
-    // Function to reset the timer
-    const reset = () => {
-        setIsActive(false);
-        setIsWorkTime(true);
-        setSecondsRemaining(WORK_DURATION_SECONDS);
-        if (timerId.current) {
-            clearInterval(timerId.current);
-            timerId.current = null;
-        }
-    };
+  // Function to pause the timer
+  const pauseTimer = useCallback(() => {
+    setIsActive(false); // This will trigger the useEffect to clear the interval
+  }, []);
 
-    // Effect for the countdown logic
-    useEffect(() => {
-        if (isActive) {
-            timerId.current = setInterval(() => {
-                setSecondsRemaining(prevSeconds => {
-                    if (prevSeconds <= 1) {
-                        clearInterval(timerId.current!);
-                        timerId.current = null;
+  // Function to reset the timer to its initial state (work time, default duration)
+  const resetTimer = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsActive(false);
+    setIsWorkTime(true); // Always reset to work time
+    setCurrentDuration(workDurationRef.current); // Reset current duration to default work duration
+    setRemainingTime(workDurationRef.current); // Reset remaining time to default work duration
+  }, []);
 
-                        if (isWorkTime) {
-                            // Work timer finished, switch to break
-                            setIsWorkTime(false);
-                            setSecondsRemaining(BREAK_DURATION_SECONDS);
-                            // The effect will re-run due to isWorkTime change, starting the break timer
-                        } else {
-                            // Break timer finished, switch back to work
-                            setIsWorkTime(true);
-                            setSecondsRemaining(WORK_DURATION_SECONDS);
-                            // The effect will re-run due to isWorkTime change, starting the work timer again
-                        }
-                        return 0; // Indicate timer reached 0
-                    }
-                    return prevSeconds - 1;
-                });
-            }, 1000);
-        } else {
-            // If not active, clear the interval
-            if (timerId.current) {
-                clearInterval(timerId.current);
-                timerId.current = null;
-            }
-        }
+  // --- Optional: Setters for durations if customization is added later ---
+  // const setWorkDuration = useCallback((duration: number) => {
+  //   workDurationRef.current = duration;
+  //   if (!isActive && isWorkTime) { // If not active and in work time, update immediately
+  //     setRemainingTime(duration);
+  //     setCurrentDuration(duration);
+  //   }
+  // }, [isActive, isWorkTime]);
 
-        // Cleanup function to clear the interval on component unmount or when dependencies change
-        return () => {
-            if (timerId.current) {
-                clearInterval(timerId.current);
-            }
-        };
-    }, [isActive, isWorkTime]); // Rerun effect when isActive or isWorkTime changes
+  // const setBreakDuration = useCallback((duration: number) => {
+  //   breakDurationRef.current = duration;
+  //   if (!isActive && !isWorkTime) { // If not active and in break time, update immediately
+  //     setRemainingTime(duration);
+  //     setCurrentDuration(duration);
+  //   }
+  // }, [isActive, isWorkTime]);
+  // --- End Optional ---
 
-    return {
-        secondsRemaining,
-        isWorkTime,
-        isActive,
-        start,
-        pause,
-        reset,
-    };
-}
+  // Effect to reset remaining time if duration changes while timer is not active,
+  // or when switching between work/break without the timer running.
+  useEffect(() => {
+    if (!isActive) {
+      // If timer is not active, ensure remaining time matches the current mode's duration.
+      const newRemainingTime = isWorkTime ? workDurationRef.current : breakDurationRef.current;
+      setRemainingTime(newRemainingTime);
+      setCurrentDuration(newRemainingTime);
+    }
+  }, [isWorkTime, isActive]); // Re-evaluate when isWorkTime or isActive state changes
+
+  return {
+    remainingTime,
+    isWorkTime,
+    isActive,
+    currentDuration,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    // setWorkDuration, // Expose if needed for customization
+    // setBreakDuration, // Expose if needed for customization
+  };
+};
 ```

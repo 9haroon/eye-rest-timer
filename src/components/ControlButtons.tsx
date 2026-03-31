@@ -2,29 +2,23 @@
 import React from 'react';
 
 interface ControlButtonsProps {
-    onStart: () => void;
-    onPause: () => void;
-    onReset: () => void;
-    isActive: boolean;
+  isActive: boolean;
+  startTimer: () => void;
+  pauseTimer: () => void;
+  resetTimer: () => void;
 }
 
-const ControlButtons: React.FC<ControlButtonsProps> = ({ onStart, onPause, onReset, isActive }) => {
-    return (
-        <div className="control-buttons">
-            {!isActive ? (
-                <button onClick={onStart} className="start-button">
-                    Start
-                </button>
-            ) : (
-                <button onClick={onPause} className="pause-button">
-                    Pause
-                </button>
-            )}
-            <button onClick={onReset} className="reset-button">
-                Reset
-            </button>
-        </div>
-    );
+const ControlButtons: React.FC<ControlButtonsProps> = ({ isActive, startTimer, pauseTimer, resetTimer }) => {
+  return (
+    <div>
+      {!isActive ? (
+        <button onClick={startTimer}>Start</button>
+      ) : (
+        <button onClick={pauseTimer}>Pause</button>
+      )}
+      <button onClick={resetTimer}>Reset</button>
+    </div>
+  );
 };
 
 export default ControlButtons;

@@ -2,25 +2,28 @@
 import React from 'react';
 
 interface TimerDisplayProps {
-    secondsRemaining: number;
-    isWorkTime: boolean;
+  remainingTime: number; // in seconds
+  isWorkTime: boolean;   // To determine the label (Work/Break)
 }
 
+// Helper function to format seconds into MM:SS format
 const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  const paddedMinutes = String(minutes).padStart(2, '0');
+  const paddedSeconds = String(remainingSeconds).padStart(2, '0');
+  return `${paddedMinutes}:${paddedSeconds}`;
 };
 
-const TimerDisplay: React.FC<TimerDisplayProps> = ({ secondsRemaining, isWorkTime }) => {
-    const displayLabel = isWorkTime ? 'Work Time' : 'Break Time';
+const TimerDisplay: React.FC<TimerDisplayProps> = ({ remainingTime, isWorkTime }) => {
+  const timerLabel = isWorkTime ? 'Work Time' : 'Break Time';
 
-    return (
-        <div className="timer-display">
-            <div className="time">{formatTime(secondsRemaining)}</div>
-            <div className="label">{displayLabel}</div>
-        </div>
-    );
+  return (
+    <div>
+      <h2>{timerLabel}</h2>
+      <h1>{formatTime(remainingTime)}</h1>
+    </div>
+  );
 };
 
 export default TimerDisplay;
