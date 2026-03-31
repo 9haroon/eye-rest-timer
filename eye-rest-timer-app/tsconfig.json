@@ -1,36 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2016",
+    "target": "ESNext",
     "useDefineForClassFields": true,
-    "lib": ["ES2016", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true,
-
-    /* Module resolution */
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-
-    /* Strictness */
+    "noEmit": true,
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "useUnknownInCatchVariables": true,
-
-    /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-
-    /* JSX */
-    "jsx": "react",
+    "jsx": "react-jsx",
     "allowSyntheticDefaultImports": true
   },
   "include": ["src"],
