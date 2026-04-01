@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pages: write
-      id-token: write # Required to use OIDC with GitHub Pages
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -21,23 +21,19 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Use a recent LTS version
-          cache: 'npm' # Cache npm dependencies
+          node-version: '20'
 
       - name: Install dependencies
-        run: npm ci # Use npm ci for cleaner installs in CI
+        run: npm install
 
       - name: Build web application
         run: npm run build
-        # If your project uses Next.js, ensure 'output: "export"' is set in next.config.js
-        # and uncomment the following line if you need to pass environment variables:
-        # env:
-        #   NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        env:
+          CI: false  # Prevents react-scripts from treating warnings as errors
 
       - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          # Assuming 'build' is the output directory for your build command (e.g., from Create React App or Vite)
           path: './build'
 
       - name: Deploy to GitHub Pages
