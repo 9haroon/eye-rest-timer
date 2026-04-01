@@ -1,62 +1,33 @@
 import React from 'react';
+import { useTimer } from './hooks/useTimer';
 import TimerDisplay from './components/TimerDisplay';
 import ControlButtons from './components/ControlButtons';
-import { useTimer } from './hooks/useTimer';
-import './index.css'; // Assuming basic CSS is imported globally
+import './index.css'; // Assuming this contains basic styling
 
 function App() {
   const {
     timeRemaining,
-    isWorkTime,
+    currentState,
     isActive,
-    start,
-    pause,
-    reset,
+    startTimer,
+    pauseTimer,
+    resetTimer,
   } = useTimer();
 
-  // Handler for starting the timer.
-  // If the timer is not active, it will start the current state (work or break).
-  // The useTimer hook manages transitioning to the next state when time runs out.
-  const handleStart = () => {
-    start();
-  };
-
-  // Handler for pausing the timer.
-  const handlePause = () => {
-    pause();
-  };
-
-  // Handler for resetting the timer.
-  // This will stop the timer and set it back to the initial work duration.
-  const handleReset = () => {
-    reset();
-  };
-
-  // Prepare display information
-  const timerLabel = isWorkTime ? 'Work' : 'Break';
-
   return (
-    <div className="app-container">
-      <h1>Eye Rest Timer</h1>
-      <TimerDisplay
-        timeRemaining={timeRemaining}
-        isWorkTime={isWorkTime}
-        isActive={isActive}
-      />
+    <div className="App" style={{ paddingTop: '2rem' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '1rem' }}>Eye Rest Timer</h1>
+      <TimerDisplay timeRemaining={timeRemaining} currentState={currentState} />
       <ControlButtons
-        onStart={handleStart}
-        onPause={handlePause}
-        onReset={handleReset}
         isActive={isActive}
-        timeRemaining={timeRemaining}
+        onStart={startTimer}
+        onPause={pauseTimer}
+        onReset={resetTimer}
       />
-      
-      {/* Status indicators for debugging or user feedback - can be removed later */}
-      <div className="status-indicators" style={{ marginTop: '20px', fontSize: '0.9em', color: '#555' }}>
-        <p>Timer State: {isActive ? 'Running' : 'Paused/Stopped'}</p>
-        <p>Current Mode: {timerLabel}</p>
-        <p>Time Remaining: {timeRemaining}s</p>
-      </div>
+      {/* Placeholder for potential settings or history later */}
+      <p style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.9rem', color: '#555' }}>
+        Current Timer State: {currentState.toUpperCase()}
+      </p>
     </div>
   );
 }

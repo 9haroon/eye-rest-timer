@@ -1,118 +1,143 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const DEFAULT_WORK_DURATION = 20 * 60; // 20 minutes in seconds
-const DEFAULT_BREAK_DURATION = 20; // 20 seconds
+const WORK_DURATION = 20 * 60; // 20 minutes in seconds
+const BREAK_DURATION = 20; // 20 seconds
 
-export interface TimerState {
+export type TimerState = 'work' | 'break';
+
+interface TimerHook {
   timeRemaining: number;
-  isWorkTime: boolean;
+  currentState: TimerState;
   isActive: boolean;
+  startTimer: () => void;
+  pauseTimer: () => void;
+  resetTimer: () => void;
 }
 
-export type TimerControls = {
-  start: () => void;
-  pause: () => void;
-  reset: () => void;
-};
+export const useTimer = (): TimerHook => {
+  const [timeRemaining, setTimeRemaining] = useState(WORK_DURATION);
+  const [currentState, setCurrentState] = useState<TimerState>('work');
+  const [isActive, setIsActive] = useState(false);
 
-export function useTimer(): TimerState & TimerControls {
-  const [timeRemaining, setTimeRemaining] = useState<number>(DEFAULT_WORK_DURATION);
-  const [isWorkTime, setIsWorkTime] = useState<boolean>(true);
-  const [isActive, setIsActive] = useState<boolean>(false);
-  const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const tick = useCallback(() => {
-    setTimeRemaining((prevTime) => {
-      if (prevTime <= 1) {
-        // Time is up, transition to next state
-        if (intervalIdRef.current) {
-          clearInterval(intervalIdRef.current);
-          intervalIdRef.current = null;
+    setTimeRemaining(prevTime => {
+      if (prevTime <= 1) { // Time is up
+        // Clear the interval that called us
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
         }
 
-        if (isWorkTime) {
-          // Transition from work to break
-          setIsWorkTime(false);
-          setTimeRemaining(DEFAULT_BREAK_DURATION);
-          setIsActive(false); // Timer stops after work period ends, waiting for next start/reset
-        } else {
-          // Transition from break to work
-          setIsWorkTime(true);
-          setTimeRemaining(DEFAULT_WORK_DURATION);
-          setIsActive(false); // Timer stops after break period ends, waiting for next start/reset
+        if (currentState === 'work') {
+          // Work period ended, switch to break
+          setCurrentState('break');
+          setTimeRemaining(BREAK_DURATION);
+          // Start the break countdown using setTimeout
+          timeoutRef.current = setTimeout(() => {
+            // Break duration is over, switch back to work and stop timer
+            setCurrentState('work');
+            setTimeRemaining(WORK_DURATION);
+            setIsActive(false); // Stop timer, requires user to press start again
+            if (timeoutRef.current) { // Clean up the timeout itself
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+          }, BREAK_DURATION * 1000);
+        } else { // currentState === 'break'
+          // Break period ended, switch back to work and stop timer
+          setCurrentState('work');
+          setTimeRemaining(WORK_DURATION);
+          setIsActive(false); // Stop timer, requires user to press start again
+          // No need to clear timeoutRef here as it was for the break itself, which has ended.
         }
-        return 0; // Ensure timeRemaining is 0 for the transition moment
+        return 0; // Ensure time is 0 before state transition
       }
+      // Continue countdown
       return prevTime - 1;
     });
-  }, [isWorkTime]);
+  }, [currentState]); // tick depends on currentState to decide next action
 
-  const start = useCallback(() => {
+  // Effect to manage the main interval
+  useEffect(() => {
+    if (isActive) {
+      // Start interval if not already running
+      if (intervalRef.current === null) {
+        intervalRef.current = setInterval(tick, 1000);
+      }
+    } else {
+      // Clear interval if not active
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isActive, tick]); // Depend on isActive to start/stop the interval
+
+  const startTimer = useCallback(() => {
     if (isActive) return; // Already running
 
-    // If timer was reset or finished and timeRemaining is 0,
-    // reset() must have been called to prepare for a new cycle.
-    // The actual timer state (work/break duration) is handled by reset() and tick().
-    // We just need to activate the interval if it's not already active.
-
+    // If we were in a break and user hits start, reset to work.
+    if (currentState === 'break') {
+        // Clear any pending break timeout if user hits start during break
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+        setCurrentState('work');
+        setTimeRemaining(WORK_DURATION);
+    }
+    // Set isActive to true to trigger the setInterval in useEffect
     setIsActive(true);
-    if (intervalIdRef.current === null) {
-      intervalIdRef.current = setInterval(tick, 1000);
-    }
-  }, [isActive, tick]);
+  }, [isActive, currentState]);
 
-  const pause = useCallback(() => {
-    if (isActive) {
-      setIsActive(false);
-      if (intervalIdRef.current) {
-        clearInterval(intervalIdRef.current);
-        intervalIdRef.current = null;
-      }
+  const pauseTimer = useCallback(() => {
+    setIsActive(false); // This will cause the useEffect to clear the interval
+    // Explicitly clear interval and timeout references for safety
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-  }, [isActive]);
-
-  const reset = useCallback(() => {
-    if (intervalIdRef.current) {
-      clearInterval(intervalIdRef.current);
-      intervalIdRef.current = null;
+    if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
     }
-    setIsActive(false);
-    setIsWorkTime(true);
-    setTimeRemaining(DEFAULT_WORK_DURATION);
   }, []);
 
-  // Effect to manage the interval based on isActive state
-  useEffect(() => {
-      if (isActive && timeRemaining > 0) {
-          intervalIdRef.current = setInterval(tick, 1000);
-      } else if (!isActive && intervalIdRef.current !== null) {
-          // Clear interval if not active (paused or finished)
-          clearInterval(intervalIdRef.current);
-          intervalIdRef.current = null;
-      }
-      // Cleanup on unmount
-      return () => {
-          if (intervalIdRef.current) {
-              clearInterval(intervalIdRef.current);
-          }
-      };
-  }, [isActive, timeRemaining, tick]); // timeRemaining is included because tick might set it to 0, which should stop the interval
+  const resetTimer = useCallback(() => {
+    setIsActive(false); // Stop timer
+    // Clear any running intervals or timeouts
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+    }
+    // Reset state
+    setCurrentState('work');
+    setTimeRemaining(WORK_DURATION);
+  }, []);
 
   return {
     timeRemaining,
-    isWorkTime,
+    currentState,
     isActive,
-    start,
-    pause,
-    reset,
+    startTimer,
+    pauseTimer,
+    resetTimer,
   };
-}
-
-// Helper to format time for display
-export function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  const paddedMinutes = String(minutes).padStart(2, '0');
-  const paddedSeconds = String(remainingSeconds).padStart(2, '0');
-  return `${paddedMinutes}:${paddedSeconds}`;
-}
+};

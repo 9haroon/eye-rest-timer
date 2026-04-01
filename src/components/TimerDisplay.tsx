@@ -1,23 +1,31 @@
 import React from 'react';
-import { formatTime } from '../hooks/useTimer';
 
 interface TimerDisplayProps {
   timeRemaining: number;
-  isWorkTime: boolean;
-  isActive: boolean;
+  currentState: 'work' | 'break';
 }
 
-const TimerDisplay: React.FC<TimerDisplayProps> = ({ timeRemaining, isWorkTime, isActive }) => {
+const formatTime = (timeInSeconds: number): string => {
+  const minutes = Math.floor(timeInSeconds / 60);
+  const seconds = timeInSeconds % 60;
+  const paddedMinutes = String(minutes).padStart(2, '0');
+  const paddedSeconds = String(seconds).padStart(2, '0');
+  return `${paddedMinutes}:${paddedSeconds}`;
+};
+
+const TimerDisplay: React.FC<TimerDisplayProps> = ({ timeRemaining, currentState }) => {
   const formattedTime = formatTime(timeRemaining);
-  const timerStateLabel = isWorkTime ? 'Work' : 'Break';
-  
-  // Basic styling classes - these would be expanded in CSS
-  const containerClassName = `timer-display ${isWorkTime ? 'work-state' : 'break-state'} ${isActive ? 'active' : ''}`;
+  // Example styling, actual styling will be in index.css or a dedicated CSS module
+  const displayStyle = {
+    color: currentState === 'work' ? '#4CAF50' : '#FFC107', // Green for work, Amber for break
+    fontSize: '4rem',
+    textAlign: 'center' as const,
+    marginBottom: '2rem',
+  };
 
   return (
-    <div className={containerClassName}>
-      <div className="time-value">{formattedTime}</div>
-      <div className="state-label">{timerStateLabel}</div>
+    <div style={displayStyle}>
+      {formattedTime}
     </div>
   );
 };
