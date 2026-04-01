@@ -1,84 +1,78 @@
-rc/hooks/useTimer.ts
-import { useState, useEffect, useRef } from 'react';
+rc/App.tsx>>>
+import React from 'react';
+import './index.css'; // Assuming index.css provides basic styling for the app and its components
+import ControlButtons from './components/ControlButtons';
+import TimerDisplay from './components/TimerDisplay';
+import { useTimer } from './hooks/useTimer'; // Assuming useTimer hook is implemented and exported
 
-const WORK_DURATION = 20 * 60; // 20 minutes in seconds
-const BREAK_DURATION = 20;    // 20 seconds
-
-export const useTimer = () => {
-  const [timeRemaining, setTimeRemaining] = useState(WORK_DURATION);
-  const [isWorkTime, setIsWorkTime] = useState(true);
-  const [isTimerActive, setIsTimerActive] = useState(false); // Controls the interval ticking
-
-  const intervalIdRef = useRef<number | null>(null); // Use number for browser environment
-
-  const startTimer = () => {
-    setIsTimerActive(true);
-  };
-
-  const pauseTimer = () => {
-    setIsTimerActive(false);
-  };
-
-  const resetTimer = () => {
-    setIsTimerActive(false);
-    if (intervalIdRef.current !== null) {
-      clearInterval(intervalIdRef.current);
-      intervalIdRef.current = null;
-    }
-    setTimeRemaining(WORK_DURATION);
-    setIsWorkTime(true);
-  };
-
-  useEffect(() => {
-    const handleTimerEnd = () => {
-      // Timer reached zero, transition to the next phase
-      if (intervalIdRef.current !== null) {
-        clearInterval(intervalIdRef.current);
-        intervalIdRef.current = null;
-      }
-
-      const nextIsWorkTime = !isWorkTime;
-      setIsWorkTime(nextIsWorkTime);
-      setTimeRemaining(nextIsWorkTime ? WORK_DURATION : BREAK_DURATION);
-
-      // If the timer was active and ran out, the next phase should also be active
-      // This is handled by `isTimerActive` still being true, which will trigger the interval start again below.
-      // No need to call setIsTimerActive(true) here explicitly if it was already true.
-    };
-
-    if (isTimerActive) {
-      if (timeRemaining > 0) {
-        // If timer is active and time remaining, set interval
-        intervalIdRef.current = setInterval(() => {
-          setTimeRemaining(prevTime => prevTime - 1);
-        }, 1000);
-      } else {
-        // If timeRemaining is 0, it means a transition needs to happen.
-        // Call handleTimerEnd to switch state and reset timeRemaining.
-        handleTimerEnd();
-      }
-    } else {
-      // If timer is not active, clear any existing interval
-      if (intervalIdRef.current !== null) {
-        clearInterval(intervalIdRef.current);
-        intervalIdRef.current = null;
-      }
-    }
-
-    // Cleanup function: clear interval when the component unmounts or dependencies change
-    return () => {
-      if (intervalIdRef.current !== null) {
-        clearInterval(intervalIdRef.current);
-      }
-    };
-  }, [isTimerActive, timeRemaining, isWorkTime]); // Re-run effect if these state values change
-
-  return {
+function App() {
+  const {
     timeRemaining,
     isWorkTime,
-    isTimerActive,
+    isActive,
     startTimer,
     pauseTimer,
     resetTimer,
+    workDuration,
+    breakDuration,
+  } = useTimer();
+
+  // --- Button State Logic ---
+  // The logic here determines when each button should be enabled or disabled.
+
+  // Start Button:
+  // - Disabled if the timer is currently active.
+  // - Enabled if the timer is paused or has just finished a cycle (timeRemaining is 0) and needs to start a new one.
+  const disableStart = isActive;
+
+  // Pause Button:
+  // - Disabled if the timer is not active (paused or at the beginning/end of a cycle).
+  // - Enabled if the timer is actively running.
+  const disablePause = !isActive;
+
+  // Reset Button:
+  // - Disabled if the timer is at its initial state (i.e., timeRemaining === workDuration and !isActive).
+  //   This prevents resetting when there's nothing to reset.
+  // - Enabled otherwise (if timer is running, paused, or has finished a cycle).
+  const disableReset = !isActive && timeRemaining === workDuration;
+
+  // Format time for display (e.g., MM:SS)
+  const formatTime = (timeInSeconds: number): string => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
-};
+
+  return (
+    <div className="app-container">
+      <h1>Eye Rest Timer</h1>
+      <TimerDisplay
+        timeRemaining={formatTime(timeRemaining)}
+        isWorkTime={isWorkTime}
+        isActive={isActive}
+      />
+      <div className="controls-wrapper">
+        <ControlButtons
+          onStart={() => {
+            // When Start is pressed:
+            // If timer is at 0 (finished cycle), `useTimer`'s startTimer handles resetting to the appropriate duration for the next cycle.
+            // If timer is paused, it resumes.
+            // If timer is at initial state, it starts.
+            startTimer();
+          }}
+          onPause={pauseTimer}
+          onReset={() => {
+            // Resetting always brings the timer back to the default work duration and state.
+            resetTimer();
+          }}
+          isStartDisabled={disableStart}
+          isPauseDisabled={disablePause}
+          isResetDisabled={disableReset}
+        />
+      </div>
+      {/* Placeholder for other components like SettingsPanel, History, etc. */}
+    </div>
+  );
+}
+
+export default App;
