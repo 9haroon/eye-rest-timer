@@ -1,33 +1,64 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTimer } from './hooks/useTimer';
 import TimerDisplay from './components/TimerDisplay';
 import ControlButtons from './components/ControlButtons';
-import './index.css'; // Assuming this contains basic styling
+import './index.css'; // Assuming global styles are imported here
+
+const WORK_DURATION_SECONDS = 20 * 60; // 20 minutes
+const BREAK_DURATION_SECONDS = 20; // 20 seconds
 
 function App() {
+  const [sessionCount, setSessionCount] = useState(0);
+
   const {
-    timeRemaining,
-    currentState,
-    isActive,
+    countdown,
+    timerType,
+    isRunning,
     startTimer,
     pauseTimer,
     resetTimer,
-  } = useTimer();
+    formatTime,
+  } = useTimer({
+    initialWorkDuration: WORK_DURATION_SECONDS,
+    initialBreakDuration: BREAK_DURATION_SECONDS,
+    onWorkComplete: () => {
+      console.log('Work timer completed. Starting break.');
+      setSessionCount(prev => prev + 1); // Increment session count
+      // Future: Trigger notifications here
+    },
+    onBreakComplete: () => {
+      console.log('Break timer completed. Starting next work session.');
+      // Future: Trigger notifications or other actions
+    },
+  });
+
+  // Determine the display label based on timerType
+  const displayLabel = timerType === 'work' ? 'Work Time' : 'Break Time';
 
   return (
-    <div className="App" style={{ paddingTop: '2rem' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '1rem' }}>Eye Rest Timer</h1>
-      <TimerDisplay timeRemaining={timeRemaining} currentState={currentState} />
-      <ControlButtons
-        isActive={isActive}
-        onStart={startTimer}
-        onPause={pauseTimer}
-        onReset={resetTimer}
-      />
-      {/* Placeholder for potential settings or history later */}
-      <p style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.9rem', color: '#555' }}>
-        Current Timer State: {currentState.toUpperCase()}
-      </p>
+    <div className="app-container">
+      <h1>Eye Rest Timer</h1>
+      <div className={`timer-display ${timerType}`}>
+        <TimerDisplay
+          time={formatTime(countdown)}
+          label={displayLabel}
+        />
+      </div>
+      <div className="controls">
+        <ControlButtons
+          isRunning={isRunning}
+          onStart={startTimer}
+          onPause={pauseTimer}
+          onReset={() => {
+            resetTimer();
+            // For this task, we don't reset sessionCount on reset.
+          }}
+        />
+      </div>
+      <div className="session-info">
+        <p>Completed Sessions: {sessionCount}</p>
+      </div>
+      {/* SettingsPanel and other components will be added later */}
     </div>
   );
 }

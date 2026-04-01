@@ -1,143 +1,115 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-const WORK_DURATION = 20 * 60; // 20 minutes in seconds
-const BREAK_DURATION = 20; // 20 seconds
-
-export type TimerState = 'work' | 'break';
-
-interface TimerHook {
-  timeRemaining: number;
-  currentState: TimerState;
-  isActive: boolean;
-  startTimer: () => void;
-  pauseTimer: () => void;
-  resetTimer: () => void;
+interface UseTimerProps {
+  initialWorkDuration: number; // in seconds
+  initialBreakDuration: number; // in seconds
+  onWorkComplete?: () => void; // Callback for when work timer finishes
+  onBreakComplete?: () => void; // Callback for when break timer finishes
 }
 
-export const useTimer = (): TimerHook => {
-  const [timeRemaining, setTimeRemaining] = useState(WORK_DURATION);
-  const [currentState, setCurrentState] = useState<TimerState>('work');
-  const [isActive, setIsActive] = useState(false);
-
+export function useTimer({
+  initialWorkDuration,
+  initialBreakDuration,
+  onWorkComplete,
+  onBreakComplete,
+}: UseTimerProps) {
+  const [countdown, setCountdown] = useState(initialWorkDuration);
+  const [timerType, setTimerType] = useState<'work' | 'break'>('work');
+  const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const tick = useCallback(() => {
-    setTimeRemaining(prevTime => {
-      if (prevTime <= 1) { // Time is up
-        // Clear the interval that called us
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
+  // Store durations in ref to ensure effect uses initial values consistently
+  const workDurationRef = useRef(initialWorkDuration);
+  const breakDurationRef = useRef(initialBreakDuration);
 
-        if (currentState === 'work') {
-          // Work period ended, switch to break
-          setCurrentState('break');
-          setTimeRemaining(BREAK_DURATION);
-          // Start the break countdown using setTimeout
-          timeoutRef.current = setTimeout(() => {
-            // Break duration is over, switch back to work and stop timer
-            setCurrentState('work');
-            setTimeRemaining(WORK_DURATION);
-            setIsActive(false); // Stop timer, requires user to press start again
-            if (timeoutRef.current) { // Clean up the timeout itself
-                clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
-            }
-          }, BREAK_DURATION * 1000);
-        } else { // currentState === 'break'
-          // Break period ended, switch back to work and stop timer
-          setCurrentState('work');
-          setTimeRemaining(WORK_DURATION);
-          setIsActive(false); // Stop timer, requires user to press start again
-          // No need to clear timeoutRef here as it was for the break itself, which has ended.
-        }
-        return 0; // Ensure time is 0 before state transition
+  const resetTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsRunning(false);
+    setTimerType('work');
+    setCountdown(workDurationRef.current);
+  };
+
+  const startTimer = () => {
+    if (!isRunning) {
+      setIsRunning(true);
+    }
+  };
+
+  const pauseTimer = () => {
+    if (isRunning) {
+      setIsRunning(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-      // Continue countdown
-      return prevTime - 1;
-    });
-  }, [currentState]); // tick depends on currentState to decide next action
+    }
+  };
 
-  // Effect to manage the main interval
   useEffect(() => {
-    if (isActive) {
-      // Start interval if not already running
-      if (intervalRef.current === null) {
-        intervalRef.current = setInterval(tick, 1000);
-      }
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setCountdown((prevCountdown) => {
+          if (prevCountdown <= 1) {
+            // Timer has reached its end
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            setIsRunning(false); // Stop the current interval
+
+            if (timerType === 'work') {
+              // Transition from work to break
+              setTimerType('break');
+              setCountdown(breakDurationRef.current);
+              // Automatically start the break timer by re-setting isRunning
+              setIsRunning(true);
+              if (onWorkComplete) onWorkComplete();
+            } else { // timerType === 'break'
+              // Transition from break to work
+              setTimerType('work');
+              setCountdown(workDurationRef.current);
+              // Automatically start the next work timer
+              setIsRunning(true);
+              if (onBreakComplete) onBreakComplete();
+            }
+            return 0; // Return 0 to indicate it just finished
+          }
+          return prevCountdown - 1; // Decrement countdown
+        });
+      }, 1000);
     } else {
-      // Clear interval if not active
+      // If not running, ensure interval is cleared if it exists
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     }
 
-    // Cleanup function
+    // Cleanup function for when component unmounts or dependencies change
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
     };
-  }, [isActive, tick]); // Depend on isActive to start/stop the interval
+  }, [isRunning, timerType, onWorkComplete, onBreakComplete]); // Dependencies
 
-  const startTimer = useCallback(() => {
-    if (isActive) return; // Already running
-
-    // If we were in a break and user hits start, reset to work.
-    if (currentState === 'break') {
-        // Clear any pending break timeout if user hits start during break
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
-        setCurrentState('work');
-        setTimeRemaining(WORK_DURATION);
-    }
-    // Set isActive to true to trigger the setInterval in useEffect
-    setIsActive(true);
-  }, [isActive, currentState]);
-
-  const pauseTimer = useCallback(() => {
-    setIsActive(false); // This will cause the useEffect to clear the interval
-    // Explicitly clear interval and timeout references for safety
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-    }
-  }, []);
-
-  const resetTimer = useCallback(() => {
-    setIsActive(false); // Stop timer
-    // Clear any running intervals or timeouts
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-    }
-    // Reset state
-    setCurrentState('work');
-    setTimeRemaining(WORK_DURATION);
-  }, []);
+  // Format countdown for display (e.g., MM:SS)
+  const formatTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   return {
-    timeRemaining,
-    currentState,
-    isActive,
+    countdown,
+    timerType,
+    isRunning,
     startTimer,
     pauseTimer,
     resetTimer,
+    formatTime,
   };
-};
+}
