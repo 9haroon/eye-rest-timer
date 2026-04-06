@@ -1,135 +1,107 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
-const WORK_DURATION_SECONDS = 20 * 60; // 20 minutes
-const BREAK_DURATION_SECONDS = 20; // 20 seconds
+export type TimerMode = 'work' | 'break';
 
-export type TimerType = 'work' | 'break';
-
-interface TimerState {
-  timeRemaining: number;
-  timerType: TimerType;
-  isRunning: boolean;
-  intervalId: NodeJS.Timeout | null;
+export interface TimerOptions {
+  workDuration: number; // in seconds
+  breakDuration: number; // in seconds
+  onTimerEnd?: (mode: TimerMode) => void;
 }
 
-interface TimerControls {
-  startTimer: () => void;
-  pauseTimer: () => void;
-  resetTimer: () => void;
-  setTimerType: (type: TimerType) => void;
-  setWorkDuration: (duration: number) => void;
-  setBreakDuration: (duration: number) => void;
+export interface TimerState {
+  timeLeft: number;
+  mode: TimerMode;
+  isActive: boolean;
+  start: () => void;
+  pause: () => void;
+  reset: () => void;
+  toggleMode: () => void;
 }
 
-export const useTimer = (): TimerState & TimerControls => {
-  const [timeRemaining, setTimeRemaining] = useState<number>(WORK_DURATION_SECONDS);
-  const [timerType, setTimerType] = useState<TimerType>('work');
-  const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+/**
+ * Custom hook to manage the core timer logic for the Eye Rest Timer.
+ * Handles countdown, start, pause, and reset functionalities.
+ */
+export const useTimer = ({
+  workDuration,
+  breakDuration,
+  onTimerEnd,
+}: TimerOptions): TimerState => {
+  const [mode, setMode] = useState<TimerMode>('work');
+  const [timeLeft, setTimeLeft] = useState<number>(workDuration);
+  const [isActive, setIsActive] = useState<boolean>(false);
+  const intervalRef = useRef<number | null>(null);
 
-  const currentWorkDuration = useRef(WORK_DURATION_SECONDS);
-  const currentBreakDuration = useRef(BREAK_DURATION_SECONDS);
-
-  const startTimer = useCallback(() => {
-    setIsRunning(true);
+  const clearTimer = useCallback(() => {
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   }, []);
 
-  const pauseTimer = useCallback(() => {
-    setIsRunning(false);
-  }, []);
-
-  const resetTimer = useCallback(() => {
-    setIsRunning(false);
-    setTimerType('work');
-    setTimeRemaining(currentWorkDuration.current);
-    if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
+  const start = useCallback(() => {
+    if (timeLeft > 0) {
+      setIsActive(true);
     }
-  }, [intervalId]);
+  }, [timeLeft]);
 
-  const setWorkDuration = useCallback((duration: number) => {
-    currentWorkDuration.current = duration;
-    if (timerType === 'work' && !isRunning) {
-      setTimeRemaining(duration);
-    }
-  }, [isRunning, timerType]);
+  const pause = useCallback(() => {
+    setIsActive(false);
+    clearTimer();
+  }, [clearTimer]);
 
-  const setBreakDuration = useCallback((duration: number) => {
-    currentBreakDuration.current = duration;
-    if (timerType === 'break' && !isRunning) {
-      setTimeRemaining(duration);
-    }
-  }, [isRunning, timerType]);
+  const reset = useCallback(() => {
+    setIsActive(false);
+    clearTimer();
+    const initialTime = mode === 'work' ? workDuration : breakDuration;
+    setTimeLeft(initialTime);
+  }, [clearTimer, mode, workDuration, breakDuration]);
 
+  const toggleMode = useCallback(() => {
+    setIsActive(false);
+    clearTimer();
+    const nextMode = mode === 'work' ? 'break' : 'work';
+    setMode(nextMode);
+    setTimeLeft(nextMode === 'work' ? workDuration : breakDuration);
+  }, [mode, workDuration, breakDuration, clearTimer]);
 
   useEffect(() => {
-    if (isRunning) {
-      const id = setInterval(() => {
-        setTimeRemaining((prevTime) => {
-          if (prevTime <= 1) {
-            // Timer finished
-            if (intervalId) {
-              clearInterval(intervalId);
-              setIntervalId(null);
-            }
-
-            if (timerType === 'work') {
-              setTimerType('break');
-              setTimeRemaining(currentBreakDuration.current);
-            } else { // timerType === 'break'
-              setTimerType('work');
-              setTimeRemaining(currentWorkDuration.current);
-            }
-            // Automatically start the next timer phase
-            // `setIsRunning(true)` will be handled by the caller or implicitly by state changes
-            // For now, we rely on this effect re-running after state changes.
-            // A more robust solution might return state and setter functions.
-            // For this task, we'll let the state changes trigger the next effect run.
-            return 0; // This return value will be overwritten by the next state set
+    if (isActive && timeLeft > 0) {
+      intervalRef.current = window.setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearTimer();
+            setIsActive(false);
+            return 0;
           }
-          return prevTime - 1;
+          return prev - 1;
         });
       }, 1000);
-      setIntervalId(id);
-      // Cleanup function to clear the interval when the component unmounts or dependencies change
-      return () => {
-        if (id) {
-          clearInterval(id);
-        }
-      };
-    } else {
-      if (intervalId) {
-        clearInterval(intervalId);
-        setIntervalId(null);
+    } else if (timeLeft === 0 && isActive) {
+      // This handles the transition when the timer reaches zero
+      setIsActive(false);
+      clearTimer();
+    }
+
+    return () => clearTimer();
+  }, [isActive, timeLeft, clearTimer]);
+
+  // Trigger onTimerEnd when timeLeft hits 0
+  useEffect(() => {
+    if (timeLeft === 0 && !isActive) {
+      if (onTimerEnd) {
+        onTimerEnd(mode);
       }
     }
-  }, [isRunning, timerType, intervalId]); // Dependencies include intervalId to ensure cleanup
-
-  // Effect to handle the initial state and transitions when isRunning is controlled externally or by state changes
-  useEffect(() => {
-      if (isRunning && timeRemaining === 0) {
-          if (timerType === 'work') {
-              setTimerType('break');
-              setTimeRemaining(currentBreakDuration.current);
-          } else { // timerType === 'break'
-              setTimerType('work');
-              setTimeRemaining(currentWorkDuration.current);
-          }
-      }
-  }, [timeRemaining, isRunning, timerType]);
-
+  }, [timeLeft, isActive, mode, onTimerEnd]);
 
   return {
-    timeRemaining,
-    timerType,
-    isRunning,
-    intervalId,
-    startTimer,
-    pauseTimer,
-    resetTimer,
-    setTimerType, // This might be useful for external control or debugging
-    setWorkDuration,
-    setBreakDuration,
+    timeLeft,
+    mode,
+    isActive,
+    start,
+    pause,
+    reset,
+    toggleMode,
   };
 };
