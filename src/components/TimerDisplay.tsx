@@ -2,30 +2,38 @@ import React from 'react';
 
 interface TimerDisplayProps {
   timeRemaining: number;
-  currentState: 'work' | 'break';
+  isWorkTime: boolean;
+  isActive: boolean;
 }
 
-const formatTime = (timeInSeconds: number): string => {
-  const minutes = Math.floor(timeInSeconds / 60);
-  const seconds = timeInSeconds % 60;
-  const paddedMinutes = String(minutes).padStart(2, '0');
-  const paddedSeconds = String(seconds).padStart(2, '0');
-  return `${paddedMinutes}:${paddedSeconds}`;
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+  return `${formattedMinutes}:${formattedSeconds}`;
 };
 
-const TimerDisplay: React.FC<TimerDisplayProps> = ({ timeRemaining, currentState }) => {
-  const formattedTime = formatTime(timeRemaining);
-  // Example styling, actual styling will be in index.css or a dedicated CSS module
-  const displayStyle = {
-    color: currentState === 'work' ? '#4CAF50' : '#FFC107', // Green for work, Amber for break
+const TimerDisplay: React.FC<TimerDisplayProps> = ({ timeRemaining, isWorkTime, isActive }) => {
+  const stateText = isWorkTime ? 'Work' : 'Break';
+  const displayStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
     fontSize: '4rem',
-    textAlign: 'center' as const,
-    marginBottom: '2rem',
+    fontWeight: 'bold',
+    margin: '20px 0',
+    color: isWorkTime ? '#34D399' : '#FCA5A5', // Green for work, Red for break
   };
+
+  // Indicate paused state if timer is not active and time is not zero
+  const statusText = isActive ? stateText : (timeRemaining === 0 ? stateText : `${stateText} (Paused)`);
 
   return (
     <div style={displayStyle}>
-      {formattedTime}
+      <span>{statusText}</span>
+      <span>{formatTime(timeRemaining)}</span>
     </div>
   );
 };
