@@ -5,7 +5,6 @@ export type TimerMode = 'work' | 'break';
 export interface TimerOptions {
   workDuration?: number; // in seconds
   breakDuration?: number; // in seconds
-  onTimerEnd?: (mode: TimerMode) => void;
 }
 
 export interface TimerState {
@@ -15,7 +14,6 @@ export interface TimerState {
   start: () => void;
   pause: () => void;
   reset: () => void;
-  toggleMode: () => void;
 }
 
 /**
@@ -27,7 +25,6 @@ export const useTimer = (options: TimerOptions = {}): TimerState => {
   const {
     workDuration = 1200, // 20 minutes default
     breakDuration = 20,  // 20 seconds default
-    onTimerEnd,
   } = options;
 
   const [mode, setMode] = useState<TimerMode>('work');
@@ -43,10 +40,8 @@ export const useTimer = (options: TimerOptions = {}): TimerState => {
   }, []);
 
   const start = useCallback(() => {
-    if (timeLeft > 0) {
-      setIsActive(true);
-    }
-  }, [timeLeft]);
+    setIsActive(true);
+  }, []);
 
   const pause = useCallback(() => {
     setIsActive(false);
@@ -60,39 +55,30 @@ export const useTimer = (options: TimerOptions = {}): TimerState => {
     setTimeLeft(workDuration);
   }, [clearTimer, workDuration]);
 
-  const toggleMode = useCallback(() => {
-    setIsActive(false);
-    clearTimer();
-    setMode((prevMode) => {
-      const nextMode = prevMode === 'work' ? 'break' : 'work';
-      setTimeLeft(nextMode === 'work' ? workDuration : breakDuration);
-      return nextMode;
-    });
-  }, [workDuration, breakDuration, clearTimer]);
-
   // Manage countdown interval
   useEffect(() => {
     if (isActive) {
       intervalRef.current = window.setInterval(() => {
-        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            // Handle transition
+            if (mode === 'work') {
+              setMode('break');
+              return breakDuration;
+            } else {
+              setMode('work');
+              return workDuration;
+            }
+          }
+          return prev - 1;
+        });
       }, 1000);
     } else {
       clearTimer();
     }
 
     return () => clearTimer();
-  }, [isActive, clearTimer]);
-
-  // Handle timer reaching zero
-  useEffect(() => {
-    if (timeLeft === 0 && isActive) {
-      setIsActive(false);
-      clearTimer();
-      if (onTimerEnd) {
-        onTimerEnd(mode);
-      }
-    }
-  }, [timeLeft, isActive, mode, onTimerEnd, clearTimer]);
+  }, [isActive, mode, workDuration, breakDuration, clearTimer]);
 
   return {
     timeLeft,
@@ -101,6 +87,5 @@ export const useTimer = (options: TimerOptions = {}): TimerState => {
     start,
     pause,
     reset,
-    toggleMode,
   };
 };

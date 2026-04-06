@@ -12,9 +12,6 @@ const App: React.FC = () => {
   const { timeLeft, mode, isActive, start, pause, reset } = useTimer({
     workDuration: 1200,
     breakDuration: 20,
-    onTimerEnd: (mode) => {
-      console.log(`Timer finished in ${mode} mode`);
-    },
   });
 
   return (
