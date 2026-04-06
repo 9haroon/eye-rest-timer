@@ -1,10 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTimer } from './hooks/useTimer';
+import { useNotification } from './hooks/useNotification';
 import { ControlButtons } from './components/ControlButtons';
 import './index.css';
 
 const App: React.FC = () => {
   const { timeLeft, mode, isActive, start, pause, reset } = useTimer();
+  const { permission, requestPermission, showNotification } = useNotification();
+
+  // Request permission on initial mount if not already granted
+  useEffect(() => {
+    if (permission === 'default') {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
+
+  // Trigger notification on mode change to break
+  useEffect(() => {
+    if (mode === 'break' && timeLeft === 20) {
+      showNotification('Time for a 20-second break!', {
+        body: 'Look at something 20 feet away for 20 seconds.',
+        icon: '/favicon.ico', // Placeholder for app icon
+      });
+    }
+  }, [mode, timeLeft, showNotification]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
