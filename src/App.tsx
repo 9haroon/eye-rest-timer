@@ -1,42 +1,33 @@
 import React from 'react';
 import { useTimer } from './hooks/useTimer';
+import { ControlButtons } from './components/ControlButtons';
 import './index.css';
 
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
-
 const App: React.FC = () => {
-  const { timeLeft, mode, isActive, start, pause, reset } = useTimer({
-    workDuration: 1200,
-    breakDuration: 20,
-  });
+  const { timeLeft, isActive, start, pause, reset } = useTimer();
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
 
   return (
-    <div className="container">
+    <div className="app-container">
       <header>
         <h1>Eye Rest Timer</h1>
       </header>
-
-      <main className={`timer-display ${mode}`}>
-        <div className="status">
-          {mode === 'work' ? 'Work Session' : 'Eye Break'}
-        </div>
-        <div className="time">
+      <main>
+        <div className="timer-display">
           {formatTime(timeLeft)}
         </div>
+        <ControlButtons 
+          onStart={start} 
+          onPause={pause} 
+          onReset={reset} 
+          isActive={isActive} 
+        />
       </main>
-
-      <div className="controls">
-        {!isActive ? (
-          <button onClick={start}>Start</button>
-        ) : (
-          <button onClick={pause}>Pause</button>
-        )}
-        <button onClick={reset}>Reset</button>
-      </div>
     </div>
   );
 };
