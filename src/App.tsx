@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { useNotification } from './hooks/useNotification';
 import { ControlButtons } from './components/ControlButtons';
+import { SettingsPanel } from './components/SettingsPanel';
 import './index.css';
 
 const App: React.FC = () => {
   const { timeLeft, mode, isActive, start, pause, reset } = useTimer();
   const { permission, requestPermission, showNotification } = useNotification();
+  const [showSettings, setShowSettings] = useState(false);
 
   // Request permission on initial mount if not already granted
   useEffect(() => {
@@ -37,18 +39,25 @@ const App: React.FC = () => {
     <div className={`app-container ${mode}`}>
       <header>
         <h1>Eye Rest Timer</h1>
+        <button onClick={() => setShowSettings(true)}>Settings</button>
       </header>
       <main>
-        <div className={`timer-display ${mode}`}>
-          <div className="status">{statusLabel}</div>
-          <div className="time">{formatTime(timeLeft)}</div>
-        </div>
-        <ControlButtons 
-          onStart={start} 
-          onPause={pause} 
-          onReset={reset} 
-          isActive={isActive} 
-        />
+        {showSettings ? (
+          <SettingsPanel onClose={() => setShowSettings(false)} />
+        ) : (
+          <>
+            <div className={`timer-display ${mode}`}>
+              <div className="status">{statusLabel}</div>
+              <div className="time">{formatTime(timeLeft)}</div>
+            </div>
+            <ControlButtons 
+              onStart={start} 
+              onPause={pause} 
+              onReset={reset} 
+              isActive={isActive} 
+            />
+          </>
+        )}
       </main>
     </div>
   );
