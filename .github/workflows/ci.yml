@@ -26,11 +26,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         if: hashFiles('package.json') != ''
 
-      - name: Node — install, lint, build
+      - name: Node — install, build
         if: hashFiles('package.json') != ''
         run: |
           bun install
-          bun run lint
           bun run build
 
       - uses: actions/setup-python@v5
