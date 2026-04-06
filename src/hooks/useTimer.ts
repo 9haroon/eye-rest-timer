@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 export type TimerMode = 'work' | 'break';
 
 export interface TimerOptions {
-  workDuration: number; // in seconds
-  breakDuration: number; // in seconds
+  workDuration?: number; // in seconds
+  breakDuration?: number; // in seconds
   onTimerEnd?: (mode: TimerMode) => void;
 }
 
@@ -20,13 +20,16 @@ export interface TimerState {
 
 /**
  * Custom hook to manage the core timer logic for the Eye Rest Timer.
- * Handles countdown, start, pause, and reset functionalities.
+ * Handles state management for countdown, work/break states, and remaining time.
+ * Adheres to the 20-20-20 rule defaults.
  */
-export const useTimer = ({
-  workDuration,
-  breakDuration,
-  onTimerEnd,
-}: TimerOptions): TimerState => {
+export const useTimer = (options: TimerOptions = {}): TimerState => {
+  const {
+    workDuration = 1200, // 20 minutes default
+    breakDuration = 20,  // 20 seconds default
+    onTimerEnd,
+  } = options;
+
   const [mode, setMode] = useState<TimerMode>('work');
   const [timeLeft, setTimeLeft] = useState<number>(workDuration);
   const [isActive, setIsActive] = useState<boolean>(false);
@@ -53,47 +56,43 @@ export const useTimer = ({
   const reset = useCallback(() => {
     setIsActive(false);
     clearTimer();
-    const initialTime = mode === 'work' ? workDuration : breakDuration;
-    setTimeLeft(initialTime);
-  }, [clearTimer, mode, workDuration, breakDuration]);
+    setMode('work');
+    setTimeLeft(workDuration);
+  }, [clearTimer, workDuration]);
 
   const toggleMode = useCallback(() => {
     setIsActive(false);
     clearTimer();
-    const nextMode = mode === 'work' ? 'break' : 'work';
-    setMode(nextMode);
-    setTimeLeft(nextMode === 'work' ? workDuration : breakDuration);
-  }, [mode, workDuration, breakDuration, clearTimer]);
+    setMode((prevMode) => {
+      const nextMode = prevMode === 'work' ? 'break' : 'work';
+      setTimeLeft(nextMode === 'work' ? workDuration : breakDuration);
+      return nextMode;
+    });
+  }, [workDuration, breakDuration, clearTimer]);
 
+  // Manage countdown interval
   useEffect(() => {
-    if (isActive && timeLeft > 0) {
+    if (isActive) {
       intervalRef.current = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearTimer();
-            setIsActive(false);
-            return 0;
-          }
-          return prev - 1;
-        });
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      // This handles the transition when the timer reaches zero
-      setIsActive(false);
+    } else {
       clearTimer();
     }
 
     return () => clearTimer();
-  }, [isActive, timeLeft, clearTimer]);
+  }, [isActive, clearTimer]);
 
-  // Trigger onTimerEnd when timeLeft hits 0
+  // Handle timer reaching zero
   useEffect(() => {
-    if (timeLeft === 0 && !isActive) {
+    if (timeLeft === 0 && isActive) {
+      setIsActive(false);
+      clearTimer();
       if (onTimerEnd) {
         onTimerEnd(mode);
       }
     }
-  }, [timeLeft, isActive, mode, onTimerEnd]);
+  }, [timeLeft, isActive, mode, onTimerEnd, clearTimer]);
 
   return {
     timeLeft,
